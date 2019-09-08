@@ -100,14 +100,22 @@ func (f *AccessTunnel) ServeParent() {
 	}
 }
 
+func (f *AccessTunnel) ServeRegistrar() {
+	log.Println("Starting eepsite server", f.Base32())
+	if err = f.SAMForwarder.Serve(); err != nil {
+		f.Cleanup()
+	}
+}
+
 //Serve starts the SAM connection and and forwards the local host:port to i2p
 func (f *AccessTunnel) Serve() error {
 	go f.ServeParent()
+    go f.ServeRegistrar()
 	if f.Up() {
-		log.Println("Starting SOCKS proxy", f.Target())
-		//if err := f.Socks.ListenAndServe("tcp", f.Target()); err != nil {
-		//panic(err)
-		//}
+		log.Println("Starting registrar", f.Forwarder.Target())
+		if err := http.ListenAndServe(f.Forwarder.Target(), f); err != nil {
+            panic(err)
+		}
 	}
 	return nil
 }
