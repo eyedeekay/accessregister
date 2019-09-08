@@ -19,8 +19,8 @@ import (
 	"github.com/phayes/freeport"
 )
 
-// AccessTunnel is a SAM-based SOCKS outproxy you connect to with a regular TCP
-// tunnel
+// AccessTunnel is a SAM-based generic tunnel accompanied by an HTTP-over-SAM
+// based registrar of base64 public keys to use as a whitelist.
 type AccessTunnel struct {
 	samtunnel.SAMTunnel
 	*samforwarder.SAMForwarder
