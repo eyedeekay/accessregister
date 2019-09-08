@@ -215,12 +215,12 @@ func (s *AccessTunnel) Load() (samtunnel.SAMTunnel, error) {
 	return s, nil
 }
 
-//NewAccessTunneld makes a new SAM forwarder with default options, accepts host:port arguments
+//NewAccessTunnel makes a new SAM forwarder with default options, accepts host:port arguments
 func NewAccessTunnel(host, port string) (*AccessTunnel, error) {
 	return NewAccessTunnelFromOptions(SetHost(host), SetPort(port))
 }
 
-//NewAccessTunneldFromOptions makes a new SAM forwarder with default options, accepts host:port arguments
+//NewAccessTunnelFromOptions makes a new SAM forwarder with default options, accepts host:port arguments
 func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunnel, error) {
 	var s AccessTunnel
 	//s.SAMTunnel
