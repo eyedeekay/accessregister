@@ -122,7 +122,7 @@ func SetSAMPort(s string) func(*AccessTunnel) error {
 func SetName(s string) func(*AccessTunnel) error {
 	return func(c *AccessTunnel) error {
 		c.Conf.TunName = s
-		c.SAMForwarder.Config().TunName = s
+		c.SAMForwarder.Config().TunName = "registrar."+s
 		return nil
 	}
 }

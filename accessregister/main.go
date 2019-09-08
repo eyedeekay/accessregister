@@ -135,6 +135,7 @@ func main() {
 		accessregister.SetReduceIdleQuantity(config.ReduceIdleQuantity),
 		accessregister.SetAccessListType(config.AccessListType),
 		accessregister.SetAccessList(config.AccessList),
+        accessregister.SetCloseIdleTime(config.ReduceIdleTime),
 		/*accessregister.SetPorts(ports),
 		  accessregister.SetDomains(domains),
 		  accessregister.SetIPs(ips),

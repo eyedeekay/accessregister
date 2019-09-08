@@ -105,7 +105,7 @@ func (f *AccessTunnel) Props() map[string]string {
 }
 
 func (f *AccessTunnel) Print() string {
-	return f.SAMTunnel.Print()
+	return f.Conf.Print()
 }
 
 func (f *AccessTunnel) Search(search string) string {
@@ -252,7 +252,8 @@ func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunne
 	var s AccessTunnel
 	//s.SAMTunnel = &samtunnel.SAMTunnel{}
 	s.SAMForwarder = &samforwarder.SAMForwarder{}
-	log.Println("Initializing outproxy")
+    s.Conf = i2ptunconf.NewI2PBlankTunConf()
+	log.Println("Initializing access register")
 	for _, o := range opts {
 		if err := o(&s); err != nil {
 			return nil, err
