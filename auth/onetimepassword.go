@@ -125,7 +125,7 @@ func (o *OneTimePassword) Whitelist() []string {
 }
 
 func (o *OneTimePassword) String() string {
-    return "otp"
+	return "otp"
 }
 
 // NewOneTimePassRotator generates a new whitelister using the One-Time-Password

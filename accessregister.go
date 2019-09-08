@@ -8,14 +8,16 @@ import (
 	"strconv"
 
 	"github.com/eyedeekay/accessregister/auth"
-	"github.com/eyedeekay/eephttpd"
-	"github.com/eyedeekay/httptunnel"
-	"github.com/eyedeekay/httptunnel/multiproxy"
+	//"github.com/eyedeekay/eephttpd"
+	//"github.com/eyedeekay/httptunnel"
+	//"github.com/eyedeekay/httptunnel/multiproxy"
 	"github.com/eyedeekay/sam-forwarder/config"
+	"github.com/eyedeekay/sam-forwarder/config/helpers"
 	"github.com/eyedeekay/sam-forwarder/interface"
 	"github.com/eyedeekay/sam-forwarder/tcp"
-	"github.com/eyedeekay/sam-forwarder/udp"
+	//"github.com/eyedeekay/sam-forwarder/udp"
 	"github.com/eyedeekay/sam3/i2pkeys"
+	//"github.com/eyedeekay/outproxy"
 	"github.com/phayes/freeport"
 )
 
@@ -24,6 +26,7 @@ import (
 type AccessTunnel struct {
 	samtunnel.SAMTunnel
 	*samforwarder.SAMForwarder
+	*i2ptunconf.Conf
 	Whitelister []whitelister.WhiteLister
 	up          bool
 }
@@ -80,7 +83,7 @@ func (f *AccessTunnel) Cleanup() {
 }
 
 func (f *AccessTunnel) GetType() string {
-	return f.SAMTunnel.GetType()
+	return f.Conf.GetType()
 }
 
 /*func (f *AccessTunnel) targetForPort443() string {
@@ -172,27 +175,45 @@ func (s *AccessTunnel) Load() (samtunnel.SAMTunnel, error) {
 	if !s.up {
 		log.Println("Started putting tunnel up")
 	}
-	f, e := s.SAMTunnel.Load()
-	if e != nil {
-		return nil, e
-	}
-	switch s.SAMTunnel.GetType() {
+    var err error
+	switch s.GetType() {
 	case "server":
-		s.SAMTunnel = f.(*samforwarder.SAMForwarder)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMForwarderFromConf(s.Conf)
+		//f.(*samforwarder.SAMForwarder)
 	case "http":
-		s.SAMTunnel = f.(*samforwarder.SAMForwarder)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMForwarderFromConf(s.Conf)
+	case "httpserver":
+		s.SAMTunnel, err = i2ptunhelper.NewSAMForwarderFromConf(s.Conf)
+		//f.(*samforwarder.SAMForwarder)
 	case "client":
-		s.SAMTunnel = f.(*samforwarder.SAMClientForwarder)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMClientForwarderFromConf(s.Conf)
+		//f.(*samforwarder.SAMClientForwarder)
 	case "httpclient":
-		s.SAMTunnel = f.(*i2phttpproxy.SAMHTTPProxy)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMHTTPClientFromConf(s.Conf)
+		//f.(*i2phttpproxy.SAMHTTPProxy)
 	case "browserclient":
-		s.SAMTunnel = f.(*i2pbrowserproxy.SAMMultiProxy)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMBrowserClientFromConf(s.Conf)
+		//f.(*i2pbrowserproxy.SAMMultiProxy)
 	case "udpserver":
-		s.SAMTunnel = f.(*samforwarderudp.SAMSSUForwarder)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMSSUForwarderFromConf(s.Conf)
+		//f.(*samforwarderudp.SAMSSUForwarder)
 	case "udpclient":
-		s.SAMTunnel = f.(*samforwarderudp.SAMSSUClientForwarder)
-	case "eephttpd":
-		s.SAMTunnel = f.(*eephttpd.EepHttpd)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMSSUClientForwarderFromConf(s.Conf)
+    case "outproxy":
+		s.SAMTunnel, err = i2ptunhelper.NewOutProxyFromConf(s.Conf)
+		//f.(*samforwarderudp.SAMSSUClientForwarder)
+    case "outproxyhttp":
+		s.SAMTunnel, err = i2ptunhelper.NewHttpOutProxyFromConf(s.Conf)
+		//f.(*samforwarderudp.SAMSSUClientForwarder)
+	/*case "eephttpd":
+		s.SAMTunnel = i2ptunhelper
+		//f.(*eephttpd.EepHttpd)
+	case "outproxyhttp":
+		s.SAMTunnel = i2ptunhelper
+		//f.(*outproxy.OutProxy)
+	case "outproxysocks":
+		s.SAMTunnel = i2ptunhelper
+		//f.(*outproxy.HttpOutProxy)*/
 	case "vpnserver":
 		return nil, fmt.Errorf("Error: %s isn't implemented yet", "eephttpd")
 	case "vpnclient":
@@ -202,9 +223,15 @@ func (s *AccessTunnel) Load() (samtunnel.SAMTunnel, error) {
 	case "kcpserver":
 		return nil, fmt.Errorf("Error: %s isn't implemented", "eephttpd")
 	default:
-		s.SAMTunnel = f.(*samforwarder.SAMForwarder)
+		s.SAMTunnel, err = i2ptunhelper.NewSAMForwarderFromConf(s.Conf)
 	}
-
+	if err != nil {
+		return nil, err
+	}
+    s.SAMTunnel, err = s.SAMTunnel.Load()
+	if err != nil {
+		return nil, err
+	}
 	w, err := s.SAMForwarder.Load()
 	if err != nil {
 		return nil, err
@@ -223,7 +250,7 @@ func NewAccessTunnel(host, port string) (*AccessTunnel, error) {
 //NewAccessTunnelFromOptions makes a new SAM forwarder with default options, accepts host:port arguments
 func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunnel, error) {
 	var s AccessTunnel
-	//s.SAMTunnel
+	//s.SAMTunnel = &samtunnel.SAMTunnel{}
 	s.SAMForwarder = &samforwarder.SAMForwarder{}
 	log.Println("Initializing outproxy")
 	for _, o := range opts {
@@ -231,7 +258,7 @@ func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunne
 			return nil, err
 		}
 	}
-	s.SAMTunnel.Config().SaveFile = true
+	s.Conf.SaveFile = true
 	log.Println("Options loaded", s.Print())
 	if len(s.Whitelister) == 0 {
 		w, err := whitelister.NewOneTimePassRotator()

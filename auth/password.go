@@ -152,7 +152,7 @@ func (o *UserNamePassword) Whitelist() []string {
 }
 
 func (o *UserNamePassword) String() string {
-    return "unp"
+	return "unp"
 }
 
 // pairs map[string][]string
