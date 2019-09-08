@@ -151,6 +151,10 @@ func (o *UserNamePassword) Whitelist() []string {
 	return r
 }
 
+func (o *UserNamePassword) String() string {
+    return "unp"
+}
+
 // pairs map[string][]string
 func NewUserNamePassword(adminuser, adminpass string) (*UserNamePassword, error) {
 	admbu, err := bcrypt.GenerateFromPassword([]byte(adminuser), 14)

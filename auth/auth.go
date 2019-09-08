@@ -19,4 +19,7 @@ type WhiteLister interface {
 	Whitelist() []string
 	// ServeHTTP implements an HTTP handler that does the login stuff
 	ServeHTTP(http.ResponseWriter, *http.Request)
+    // String returns a string to be used for identifying the auth method in use
+    // to the server so it can expose it to the admin
+    String() string
 }

@@ -22,11 +22,11 @@ func SetType(s string) func(*AccessTunnel) error {
 	return func(c *AccessTunnel) error {
 		if s == "http" {
 			c.SAMTunnel.Config().Type = s
-			c.SAMForwarder.Config().Type = "server"
+			c.SAMForwarder.Config().Type = "httpserver"
 			return nil
 		} else {
 			c.SAMTunnel.Config().Type = "server"
-			c.SAMForwarder.Config().Type = "server"
+			c.SAMForwarder.Config().Type = "httpserver"
 			return nil
 		}
 	}

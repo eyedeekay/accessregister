@@ -3,6 +3,8 @@ package outproxy
 import (
 	"fmt"
 	"log"
+	"net/http"
+    "io"
 
 	"github.com/eyedeekay/eephttpd"
 	"github.com/eyedeekay/httptunnel"
@@ -21,11 +23,44 @@ import (
 type AccessTunnel struct {
 	samtunnel.SAMTunnel
 	*samforwarder.SAMForwarder
-	[]whitelister.WhiteLister
-	up bool
+	Whitelister []whitelister.WhiteLister
+	up          bool
 }
 
 var err error
+
+func (f *AccessTunnel) Check(requestBytesOrString interface{}) (string, interface{}, bool) {
+	for _, v := range f.Whitelister {
+		if base64, extra, ok := v.Check(requestBytesOrString); ok {
+			return base64, extra, ok
+		}
+	}
+	return "", nil, false
+}
+
+func (f *AccessTunnel) Whitelist() []string {
+	var r []string
+	for _, w := range f.Whitelister {
+		for _, v := range w.Whitelist() {
+			r = append(r, v)
+		}
+	}
+	return r
+}
+
+func (f *AccessTunnel) ServeHTTP(rw http.ResponseWriter, rq *http.Request) {
+    for _, w := range f.Whitelister {
+        if rq.URL.Path == w.String() {
+            w.ServeHTTP(rw, rq)
+            return
+        }
+    }
+    io.WriteString(rw, "Please choose a valid form of registration for your")
+    io.WriteString(rw, "account.")
+    for _, w := range f.Whitelister {
+        io.WriteString(rw, "<a href=/\""+w.String()+"\">"+w.String()+"</a><br>")
+    }
+}
 
 func (f *AccessTunnel) Config() *i2ptunconf.Conf {
 	return f.SAMTunnel.Config()
@@ -55,13 +90,13 @@ func (f *AccessTunnel) GetType() string {
 }*/
 
 func (f *AccessTunnel) Props() map[string]string {
-    var r map[string]string
-    for k, v := range f.SAMTunnel.Props() {
-        r[k] = v
-    }
-    for k, v := range f.SAMForwarder.Props() {
-        r["registrar."+k] =
-    }
+	var r map[string]string
+	for k, v := range f.SAMTunnel.Props() {
+		r[k] = v
+	}
+	for k, v := range f.SAMForwarder.Props() {
+		r["registrar."+k] = v
+	}
 	return r
 }
 
@@ -110,11 +145,11 @@ func (f *AccessTunnel) ServeRegistrar() {
 //Serve starts the SAM connection and and forwards the local host:port to i2p
 func (f *AccessTunnel) Serve() error {
 	go f.ServeParent()
-    go f.ServeRegistrar()
+	go f.ServeRegistrar()
 	if f.Up() {
-		log.Println("Starting registrar", f.Forwarder.Target())
-		if err := http.ListenAndServe(f.Forwarder.Target(), f); err != nil {
-            panic(err)
+		log.Println("Starting registrar", f.SAMForwarder.Target())
+		if err := http.ListenAndServe(f.SAMForwarder.Target(), f); err != nil {
+			panic(err)
 		}
 	}
 	return nil
@@ -173,7 +208,7 @@ func (s *AccessTunnel) Load() (samtunnel.SAMTunnel, error) {
 	if err != nil {
 		return nil, err
 	}
-    s.SAMForwarder = w.(*samforwarder.SAMForwarder)
+	s.SAMForwarder = w.(*samforwarder.SAMForwarder)
 	s.up = true
 	log.Println("Finished putting tunnel up")
 	return s, nil
@@ -197,6 +232,14 @@ func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunne
 	}
 	s.SAMTunnel.Config().SaveFile = true
 	log.Println("Options loaded", s.Print())
+    if len(s.Whitelister) == 0 {
+        w, err := whitelister.NewOneTimePassRotator()
+        if err != nil {
+            return nil, err
+        }
+        s.Whitelister = append(s.Whitelister, w)
+
+    }
 	l, e := s.Load()
 	if e != nil {
 		return nil, e
