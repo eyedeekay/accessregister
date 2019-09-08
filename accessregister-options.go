@@ -12,7 +12,7 @@ type Option func(*AccessTunnel) error
 func SetFilePath(s string) func(*AccessTunnel) error {
 	return func(c *AccessTunnel) error {
 		c.SAMTunnel.Config().FilePath = s
-		c.SAMForwarder.Config().FilePath = "authenticator." + s
+		c.SAMForwarder.Config().FilePath = "registrar." + s
 		return nil
 	}
 }
