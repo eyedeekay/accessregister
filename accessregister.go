@@ -2,10 +2,12 @@ package outproxy
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-    "io"
+	"strconv"
 
+	"github.com/eyedeekay/accessregister/auth"
 	"github.com/eyedeekay/eephttpd"
 	"github.com/eyedeekay/httptunnel"
 	"github.com/eyedeekay/httptunnel/multiproxy"
@@ -14,8 +16,7 @@ import (
 	"github.com/eyedeekay/sam-forwarder/tcp"
 	"github.com/eyedeekay/sam-forwarder/udp"
 	"github.com/eyedeekay/sam3/i2pkeys"
-
-	"github.com/eyedeekay/accessregister/auth"
+	"github.com/phayes/freeport"
 )
 
 // AccessTunnel is a SAM-based SOCKS outproxy you connect to with a regular TCP
@@ -49,17 +50,17 @@ func (f *AccessTunnel) Whitelist() []string {
 }
 
 func (f *AccessTunnel) ServeHTTP(rw http.ResponseWriter, rq *http.Request) {
-    for _, w := range f.Whitelister {
-        if rq.URL.Path == w.String() {
-            w.ServeHTTP(rw, rq)
-            return
-        }
-    }
-    io.WriteString(rw, "Please choose a valid form of registration for your")
-    io.WriteString(rw, "account.")
-    for _, w := range f.Whitelister {
-        io.WriteString(rw, "<a href=/\""+w.String()+"\">"+w.String()+"</a><br>")
-    }
+	for _, w := range f.Whitelister {
+		if rq.URL.Path == w.String() {
+			w.ServeHTTP(rw, rq)
+			return
+		}
+	}
+	io.WriteString(rw, "Please choose a valid form of registration for your")
+	io.WriteString(rw, "account.")
+	for _, w := range f.Whitelister {
+		io.WriteString(rw, "<a href=/\""+w.String()+"\">"+w.String()+"</a><br>")
+	}
 }
 
 func (f *AccessTunnel) Config() *i2ptunconf.Conf {
@@ -232,14 +233,19 @@ func NewAccessTunnelFromOptions(opts ...func(*AccessTunnel) error) (*AccessTunne
 	}
 	s.SAMTunnel.Config().SaveFile = true
 	log.Println("Options loaded", s.Print())
-    if len(s.Whitelister) == 0 {
-        w, err := whitelister.NewOneTimePassRotator()
-        if err != nil {
-            return nil, err
-        }
-        s.Whitelister = append(s.Whitelister, w)
+	if len(s.Whitelister) == 0 {
+		w, err := whitelister.NewOneTimePassRotator()
+		if err != nil {
+			return nil, err
+		}
+		s.Whitelister = append(s.Whitelister, w)
 
-    }
+	}
+	port, e := freeport.GetFreePort()
+	if e != nil {
+		return nil, e
+	}
+	s.SAMForwarder.Config().TargetPort = strconv.Itoa(port)
 	l, e := s.Load()
 	if e != nil {
 		return nil, e
