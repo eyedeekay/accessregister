@@ -1,4 +1,4 @@
-package outproxy
+package accessregister
 
 import (
 	"fmt"
